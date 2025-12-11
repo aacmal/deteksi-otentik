@@ -40,7 +40,7 @@ export default function ScanScreen() {
   return (
     <>
       <Stack.Screen options={SCREEN_OPTIONS} />
-      <ScrollView className="top-safe flex-1 bg-background">
+      <ScrollView className="pt-safe flex-1 bg-background">
         <View className="flex-1 p-6">
           {/* Header */}
           <View className="mb-8 mt-4 items-center">
@@ -52,7 +52,7 @@ export default function ScanScreen() {
 
           {/* Upload Area */}
           <Pressable>
-            <View className="mb-6 min-h-[300px] items-center justify-center rounded-3xl border-2 border-dashed border-border p-12">
+            <View className="mb-6 min-h-[300px] items-center justify-center rounded-3xl border-2 border-dashed border-border bg-card p-12">
               <View className="mb-4 rounded-full bg-secondary p-6">
                 <Icon as={FileImage} size={48} className="text-primary" />
               </View>
