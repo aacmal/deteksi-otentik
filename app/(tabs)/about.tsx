@@ -30,10 +30,6 @@ const IMAGE_STYLE: ImageStyle = {
 export default function AboutScreen() {
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{
-        light: '#f9fafb',
-        dark: '#1f2937',
-      }}
       headerImage={
         <View>
           <View className="pt-safe h-full items-center justify-center bg-background">

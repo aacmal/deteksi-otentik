@@ -1,7 +1,7 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { Icon } from '@/components/ui/icon';
 import { Tabs } from 'expo-router';
-import { HouseHeart, Scan, Signature, SwatchBook } from 'lucide-react-native';
+import { Scan, Signature, SwatchBook } from 'lucide-react-native';
 import { View } from 'react-native';
 
 export default function TabLayout() {
