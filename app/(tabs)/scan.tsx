@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import * as ImagePicker from 'expo-image-picker';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import {
   ArrowRight,
   Camera,
@@ -41,6 +41,7 @@ const recentAnalysis = [
 
 export default function ScanScreen() {
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
+  const [imageUrl, setImageUrl] = React.useState('');
 
   const pickImage = async () => {
     // Request permission
@@ -61,6 +62,24 @@ export default function ScanScreen() {
     if (!result.canceled) {
       setSelectedImage(result.assets[0].uri);
     }
+  };
+
+  const handlePreviewFromUrl = () => {
+    if (!imageUrl.trim()) {
+      alert('Mohon masukkan URL gambar terlebih dahulu');
+      return;
+    }
+
+    // Basic URL validation
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      alert('URL harus dimulai dengan http:// atau https://');
+      return;
+    }
+
+    router.push({
+      pathname: '/preview',
+      params: { imageUrl },
+    });
   };
 
   return (
@@ -113,8 +132,15 @@ export default function ScanScreen() {
         {/* By image link */}
         <Text className="my-4 text-center">Atau paste link gambar di sini</Text>
         <View className="flex flex-row gap-3">
-          <Input className="flex-1" placeholder="https://example.com/image.jpg" />
-          <Button size="icon">
+          <Input
+            className="flex-1"
+            placeholder="https://example.com/image.jpg"
+            value={imageUrl}
+            onChangeText={setImageUrl}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Button size="icon" onPress={handlePreviewFromUrl}>
             <Icon as={ArrowRight} size={20} color="#000" />
           </Button>
         </View>
