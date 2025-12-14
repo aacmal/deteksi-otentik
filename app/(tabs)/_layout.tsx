@@ -21,7 +21,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="scan"
         options={{
-          title: 'Deteksi',
+          title: 'Pindai',
           tabBarIcon: ({ color }) => (
             <View
               style={{
