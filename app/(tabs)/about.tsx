@@ -11,11 +11,7 @@ const SCREEN_OPTIONS = {
   headerTransparent: true,
 };
 
-const IMAGE_STYLE: ImageStyle = {
-  height: 76,
-  width: 76,
-};
-
+const devs = ['Aca', 'Raffi', 'Rizky'];
 export default function AboutScreen() {
   return (
     <ParallaxScrollView
@@ -41,14 +37,10 @@ export default function AboutScreen() {
           </Text>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Pengembang</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Text>TODO:</Text>
-        </CardContent>
-      </Card>
+      <Text className="text-center">
+        Dikembangkan oleh: {'\n'}
+        {devs.join(' | ')}
+      </Text>
     </ParallaxScrollView>
   );
 }
