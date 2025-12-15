@@ -4,7 +4,9 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Text } from '@/components/ui/text';
+import { useAIDetector } from '@/hooks/useAIDetector';
 import { cn } from '@/lib/utils';
+import { preprocessImage } from '@/utils/imageUtils';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack } from 'expo-router';
 import {
@@ -16,7 +18,7 @@ import {
   X,
 } from 'lucide-react-native';
 import * as React from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 
 const SCREEN_OPTIONS = {
   title: 'Deteksi',
@@ -40,8 +42,11 @@ const recentAnalysis = [
 ];
 
 export default function ScanScreen() {
+  const { isLoading: modelLoading, detectAI } = useAIDetector();
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
   const [imageUrl, setImageUrl] = React.useState('');
+  const [result, setResult] = React.useState<any>(null);
+  const [detecting, setDetecting] = React.useState(false);
 
   const pickImage = async () => {
     // Request permission
@@ -61,6 +66,28 @@ export default function ScanScreen() {
 
     if (!result.canceled) {
       setSelectedImage(result.assets[0].uri);
+      setResult(null); // Reset result
+    }
+  };
+
+  const handleDetect = async () => {
+    if (!selectedImage) return;
+
+    try {
+      setDetecting(true);
+
+      // 1. Preprocess image
+      const imageData = await preprocessImage(selectedImage);
+
+      // 2. Run detection
+      const detection = await detectAI(imageData);
+
+      setResult(detection);
+    } catch (error) {
+      console.error('Detection failed:', error);
+      alert('Deteksi gagal. Silakan coba lagi.');
+    } finally {
+      setDetecting(false);
     }
   };
 
@@ -81,6 +108,15 @@ export default function ScanScreen() {
       params: { imageUrl },
     });
   };
+
+  if (modelLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#fff" />
+        <Text className="mt-4 text-foreground">Memuat Model AI...</Text>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -123,9 +159,28 @@ export default function ScanScreen() {
           </View>
         </Pressable>
 
-        <Button>
-          <Text>Analisis Gambar</Text>
+        <Button onPress={handleDetect} disabled={!selectedImage || detecting}>
+          <Text>{detecting ? 'Menganalisis...' : 'Analisis Gambar'}</Text>
         </Button>
+
+        {/* Result Display */}
+        {result && (
+          <View
+            className={cn('my-6 rounded-2xl p-6', {
+              'bg-purple-600/20': result.isAI,
+              'bg-green-600/20': !result.isAI,
+            })}>
+            <Text className="mb-2 text-center text-2xl font-bold text-foreground">
+              {result.isAI ? '🤖 AI Generated' : '🎨 Gambar Asli'}
+            </Text>
+            <Text className="mb-1 text-center text-base text-foreground">
+              Confidence: {result.confidence.toFixed(1)}%
+            </Text>
+            <Text className="text-center text-sm text-muted-foreground">
+              Raw Score: {result.rawScore.toFixed(4)}
+            </Text>
+          </View>
+        )}
 
         <Separator className="my-4" />
 
