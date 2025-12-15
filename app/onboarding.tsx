@@ -8,7 +8,7 @@ export default function OnboardingScreen() {
   const handleComplete = async () => {
     try {
       await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-      router.replace('/(tabs)');
+      // router.replace('/(tabs)');
     } catch (error) {
       console.error('Error saving onboarding status:', error);
     }
@@ -19,7 +19,11 @@ export default function OnboardingScreen() {
       <Text className="mb-2 text-center text-muted-foreground">Selamat Datang di</Text>
       <Text className="mb-8 text-center text-4xl font-bold text-foreground">Deteksi Otentik</Text>
       <View className="mb-8 h-64 w-full items-center justify-center rounded-3xl bg-secondary">
-        <Text className="text-6xl">🤖</Text>
+        <Image
+          source={require('../assets/images/ai.png')}
+          className="h-full w-full rounded-2xl"
+          resizeMode="cover"
+        />
       </View>
       <Text className="mb-8 text-center text-base text-muted-foreground">
         Aplikasi untuk mendeteksi apakah gambar dibuat oleh AI atau asli

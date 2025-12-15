@@ -49,24 +49,30 @@ export default function ScanScreen() {
   const [detecting, setDetecting] = React.useState(false);
 
   const pickImage = async () => {
-    // Request permission
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (status !== 'granted') {
-      alert('Maaf, kami memerlukan izin akses galeri untuk memilih gambar.');
-      return;
-    }
+      if (status !== 'granted') {
+        alert('Maaf, kami memerlukan izin akses galeri untuk memilih gambar.');
+        return;
+      }
 
-    // Launch image picker
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 1,
-    });
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 1,
+        allowsMultipleSelection: false,
+      });
 
-    if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
-      setResult(null); // Reset result
+      if (!result.canceled) {
+        setSelectedImage(result.assets[0].uri);
+        setResult(null); // Reset result
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      alert('Gagal membuka galeri. Coba restart aplikasi.');
     }
   };
 
@@ -167,18 +173,32 @@ export default function ScanScreen() {
         {result && (
           <View
             className={cn('my-6 rounded-2xl p-6', {
-              'bg-purple-600/20': result.isAI,
-              'bg-green-600/20': !result.isAI,
+              'bg-yellow-600/20': result.isUncertain,
+              'bg-purple-600/20': !result.isUncertain && result.isAI,
+              'bg-green-600/20': !result.isUncertain && !result.isAI,
             })}>
-            <Text className="mb-2 text-center text-2xl font-bold text-foreground">
-              {result.isAI ? '🤖 AI Generated' : '🎨 Gambar Asli'}
-            </Text>
-            <Text className="mb-1 text-center text-base text-foreground">
-              Confidence: {result.confidence.toFixed(1)}%
-            </Text>
-            <Text className="text-center text-sm text-muted-foreground">
-              Raw Score: {result.rawScore.toFixed(4)}
-            </Text>
+            {result.isUncertain ? (
+              <>
+                <Text className="mb-2 text-center text-2xl font-bold text-foreground">
+                  ⚠️ Tidak Diketahui
+                </Text>
+                <Text className="mb-3 text-center text-base text-muted-foreground">
+                  Model tidak yakin dengan hasil analisis
+                </Text>
+                <Text className="mb-1 text-center text-sm text-foreground">
+                  Confidence: {result.confidence.toFixed(1)}%
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="mb-2 text-center text-2xl font-bold text-foreground">
+                  {result.isAI ? '🤖 AI Generated' : '🎨 Gambar Asli'}
+                </Text>
+                <Text className="mb-1 text-center text-base text-foreground">
+                  Confidence: {result.confidence.toFixed(1)}%
+                </Text>
+              </>
+            )}
           </View>
         )}
 
