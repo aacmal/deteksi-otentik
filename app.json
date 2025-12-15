@@ -46,7 +46,8 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "useLegacyPackaging": true
+            "useLegacyPackaging": true,
+            "extraProguardRules": "-keep class org.tensorflow.lite.** { *; }\n-keep class org.tensorflow.lite.gpu.** { *; }\n-keep class com.mrousavy.tflite.** { *; }\n-dontwarn org.tensorflow.lite.gpu.**"
           },
           "ios": {}
         }
