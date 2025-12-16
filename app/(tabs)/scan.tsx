@@ -18,28 +18,26 @@ import {
   X,
 } from 'lucide-react-native';
 import * as React from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
 import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 
 const SCREEN_OPTIONS = {
   title: 'Deteksi',
 };
 
-const recentAnalysis = [
-  {
-    id: 1,
-    name: 'Portrait_004.jpg',
-    status: 'REAL',
-    time: 'Scanned 2 hours ago',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-  {
-    id: 2,
-    name: 'Gen_Art_v2.png',
-    status: 'AI GEN',
-    time: 'Scanned yesterday',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-];
+type AnalysisEntry = {
+  id: number;
+  uri: string;
+  name: string;
+  isAI: boolean | null;
+  confidence: number | null;
+  time: string; // ISO
+  thumbnailUri?: string;
+};
+
+const HISTORY_KEY = '@analysis_history';
 
 export default function ScanScreen() {
   const { isLoading: modelLoading, detectAI } = useAIDetector();
@@ -58,10 +56,11 @@ export default function ScanScreen() {
         return;
       }
 
-      // Launch image picker
+      // Launch image picker with fixed aspect ratio (match preview: 5:6)
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
+        aspect: [1,1],
         quality: 1,
         allowsMultipleSelection: false,
       });
@@ -89,6 +88,65 @@ export default function ScanScreen() {
       const detection = await detectAI(imageData);
 
       setResult(detection);
+      // 3. Only persist entry when model is confident (>=70%) and not uncertain
+      const confidence = typeof detection.confidence === 'number' ? detection.confidence : 0;
+      if (!detection.isUncertain && confidence >= 70) {
+        try {
+          const entry: AnalysisEntry = {
+            id: Date.now(),
+            uri: selectedImage,
+            name: selectedImage.split('/').pop() || 'image',
+            isAI: typeof detection.isAI === 'boolean' ? detection.isAI : null,
+            confidence: typeof detection.confidence === 'number' ? detection.confidence : null,
+            time: new Date().toISOString(),
+          };
+
+          // Create a small cached thumbnail and persist entry to AsyncStorage (no redirect)
+          try {
+            // create thumbnail (resized image) - returns a cached file uri
+            try {
+              const thumb = await ImageManipulator.manipulateAsync(
+                entry.uri,
+                [{ resize: { width: 360 } }],
+                { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+              );
+              entry.thumbnailUri = thumb.uri;
+            } catch (e) {
+              console.warn('Thumbnail creation failed, will fallback to original uri', e);
+              entry.thumbnailUri = entry.uri;
+            }
+
+            const raw = await AsyncStorage.getItem(HISTORY_KEY);
+            const prev: AnalysisEntry[] = raw ? JSON.parse(raw) : [];
+            const next = [entry, ...prev].slice(0, 20);
+
+            // Determine removed items (present in prev but not in next) and clean their thumbnails
+            const keptIds = new Set(next.map((i) => i.id));
+            const removed = prev.filter((p) => !keptIds.has(p.id));
+            for (const r of removed) {
+              try {
+                if (r.thumbnailUri) {
+                  const cacheDir = (FileSystem as any).cacheDirectory || '';
+                  if (cacheDir && r.thumbnailUri.startsWith(cacheDir)) {
+                    await FileSystem.deleteAsync(r.thumbnailUri, { idempotent: true });
+                  }
+                }
+              } catch (e) {
+                console.warn('Failed to delete old thumbnail', e);
+              }
+            }
+
+            await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+          } catch (err) {
+            console.warn('Failed to persist history from Scan', err);
+          }
+        } catch (err) {
+          console.warn('Failed to build/persist history entry', err);
+        }
+      } else {
+        // Do not persist uncertain/low-confidence results
+        console.log('Result uncertain or below threshold — not saved to history');
+      }
     } catch (error) {
       console.error('Detection failed:', error);
       alert('Deteksi gagal. Silakan coba lagi.');
@@ -96,7 +154,7 @@ export default function ScanScreen() {
       setDetecting(false);
     }
   };
-
+  
   const handlePreviewFromUrl = () => {
     if (!imageUrl.trim()) {
       alert('Mohon masukkan URL gambar terlebih dahulu');
@@ -172,10 +230,10 @@ export default function ScanScreen() {
         {/* Result Display */}
         {result && (
           <View
-            className={cn('my-6 rounded-2xl p-6', {
-              'bg-yellow-600/20': result.isUncertain,
-              'bg-purple-600/20': !result.isUncertain && result.isAI,
-              'bg-green-600/20': !result.isUncertain && !result.isAI,
+            className={cn('my-6 rounded-2xl p-6 border', {
+              'bg-yellow-600/20 border-yellow-500': result.isUncertain,
+              'bg-purple-600/20 border-purple-500': !result.isUncertain && result.isAI,
+              'bg-green-600/20 border-green-500': !result.isUncertain && !result.isAI,
             })}>
             {result.isUncertain ? (
               <>
@@ -183,16 +241,13 @@ export default function ScanScreen() {
                   ⚠️ Tidak Diketahui
                 </Text>
                 <Text className="mb-3 text-center text-base text-muted-foreground">
-                  Model tidak yakin dengan hasil analisis
-                </Text>
-                <Text className="mb-1 text-center text-sm text-foreground">
-                  Confidence: {result.confidence.toFixed(1)}%
+                  Model tidak yakin dengan hasil analisis, silakan coba gambar lain
                 </Text>
               </>
             ) : (
               <>
                 <Text className="mb-2 text-center text-2xl font-bold text-foreground">
-                  {result.isAI ? '🤖 AI Generated' : '🎨 Gambar Asli'}
+                  {result.isAI ? 'AI Generated' : 'Gambar Asli'}
                 </Text>
                 <Text className="mb-1 text-center text-base text-foreground">
                   Confidence: {result.confidence.toFixed(1)}%
@@ -206,7 +261,7 @@ export default function ScanScreen() {
 
         {/* By image link */}
         <Text className="my-4 text-center">Atau paste link gambar di sini</Text>
-        <View className="flex flex-row gap-3">
+        <View className="flex flex-row gap-3 mb-24">
           <Input
             className="flex-1"
             placeholder="https://example.com/image.jpg"

@@ -5,59 +5,54 @@ import { Text } from '@/components/ui/text';
 import { router, Stack } from 'expo-router';
 import { ArrowRight, Scan } from 'lucide-react-native';
 import * as React from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 
 const SCREEN_OPTIONS = {
   title: 'Beranda',
 };
 
-const analysisHistory = [
-  {
-    id: 1,
-    name: 'Portrait_004.jpg',
-    status: 'REAL',
-    time: '2 jam lalu',
-    confidence: '95%',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-  {
-    id: 2,
-    name: 'Gen_Art_v2.png',
-    status: 'AI GEN',
-    time: 'Kemarin',
-    confidence: '87%',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-  {
-    id: 3,
-    name: 'Landscape_003.jpg',
-    status: 'REAL',
-    time: '2 hari lalu',
-    confidence: '92%',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-  {
-    id: 4,
-    name: 'AI_Portrait.png',
-    status: 'AI GEN',
-    time: '3 hari lalu',
-    confidence: '89%',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-  {
-    id: 5,
-    name: 'Photo_001.jpg',
-    status: 'REAL',
-    time: 'Minggu lalu',
-    confidence: '98%',
-    thumbnail: require('@/assets/images/react-native-reusables-dark.png'),
-  },
-];
+const HISTORY_KEY = '@analysis_history';
+
+type AnalysisEntry = {
+  id: number;
+  uri: string;
+  name: string;
+  isAI: boolean | null;
+  confidence: number | null;
+  time: string; // ISO
+  thumbnailUri?: string;
+};
 
 export default function HomeScreen() {
-  const totalAnalysis = analysisHistory.length;
-  const realImages = analysisHistory.filter((item) => item.status === 'REAL').length;
-  const aiImages = analysisHistory.filter((item) => item.status === 'AI GEN').length;
+  const [history, setHistory] = React.useState<AnalysisEntry[]>([]);
+
+  const loadHistory = React.useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(HISTORY_KEY);
+      if (raw) setHistory(JSON.parse(raw));
+      else setHistory([]);
+    } catch (err) {
+      console.warn('Failed to load history', err);
+    }
+  }, []);
+
+  // Load on mount
+  React.useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  // Reload when screen gains focus so newly-saved entries (from Scan) appear immediately
+  useFocusEffect(
+    React.useCallback(() => {
+      loadHistory();
+    }, [loadHistory])
+  );
+
+  const totalAnalysis = history.length;
+  const realImages = history.filter((item) => item.isAI === false).length;
+  const aiImages = history.filter((item) => item.isAI === true).length;
 
   return (
     <>
@@ -104,34 +99,36 @@ export default function HomeScreen() {
             </View>
           </Pressable>
 
-          {/* Recent Analysis */}
           <View className="mb-4">
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-lg font-bold text-foreground">Riwayat Analisis</Text>
             </View>
 
-            {analysisHistory.slice(0, 5).map((item) => (
+            {history.slice(0, 20).map((item) => (
               <Pressable key={item.id}>
                 <View className="mb-3 flex-row items-center rounded-2xl border border-secondary bg-card p-4">
                   <Image
-                    source={item.thumbnail}
+                    source={{ uri: item.thumbnailUri ?? item.uri }}
                     className="mr-4 h-16 w-16 rounded-xl"
                     resizeMode="cover"
+                    onError={() => {
+                      // If thumbnail can't be loaded, no runtime crash — image will show blank.
+                    }}
                   />
                   <View className="flex-1">
                     <Text className="mb-1 text-base font-semibold text-foreground">
                       {item.name}
                     </Text>
-                    <Text className="mb-1 text-sm text-muted-foreground">{item.time}</Text>
+                    <Text className="mb-1 text-sm text-muted-foreground">{new Date(item.time).toLocaleString()}</Text>
                     <Text className="text-xs text-muted-foreground">
-                      Confidence: {item.confidence}
+                      Confidence: {item.confidence != null ? `${item.confidence.toFixed(1)}%` : '-'}
                     </Text>
                   </View>
                   <View
                     className={`rounded-lg px-3 py-1 ${
-                      item.status === 'REAL' ? 'bg-green-600' : 'bg-purple-600'
+                      item.isAI === null ? 'bg-yellow-600' : item.isAI ? 'bg-purple-600' : 'bg-green-600'
                     }`}>
-                    <Text className="text-xs font-bold text-white">{item.status}</Text>
+                    <Text className="text-xs font-bold text-white">{item.isAI === null ? 'TIDAK PASTI' : item.isAI ? 'AI GEN' : 'REAL'}</Text>
                   </View>
                 </View>
               </Pressable>

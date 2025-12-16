@@ -148,7 +148,7 @@ export default function PreviewScreen() {
                       Confidence: {result.confidence.toFixed(1)}%
                     </Text>
                     <Text className="text-center text-xs text-muted-foreground">
-                      (Threshold minimum: 60%)
+                      (Threshold minimum: 70%)
                     </Text>
                   </>
                 ) : (

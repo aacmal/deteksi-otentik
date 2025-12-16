@@ -8,7 +8,7 @@ export type AIDetectorResult = {
   isAI: boolean;
   confidence: number;
   rawScore: number;
-  isUncertain: boolean; // true jika confidence < 60%
+  isUncertain: boolean; // true jika confidence < 70%
 };
 
 export const useAIDetector = () => {
@@ -81,8 +81,8 @@ export const useAIDetector = () => {
       const confidence = isAI ? 1 - rawScore : rawScore;
       const confidencePercent = confidence * 100;
 
-      // Threshold: jika confidence < 60%, tandai sebagai uncertain
-      const UNCERTAINTY_THRESHOLD = 60;
+      // Threshold: jika confidence < 70%, tandai sebagai uncertain
+      const UNCERTAINTY_THRESHOLD = 70;
       const isUncertain = confidencePercent < UNCERTAINTY_THRESHOLD;
 
       const result = {
