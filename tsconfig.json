@@ -3,6 +3,11 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "lib": [
+      "dom",
+      "es2015",
+      "esnext"
+    ],
     "paths": {
       "@/*": ["*"]
     }

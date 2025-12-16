@@ -16,7 +16,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.deteksiotentik"
+      "bundleIdentifier": "com.wanakerta.deteksiotentik"
     },
     "android": {
       "edgeToEdgeEnabled": true,
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.anonymous.deteksiotentik"
+      "package": "com.wanakerta.deteksiotentik"
     },
     "web": {
       "bundler": "metro",
