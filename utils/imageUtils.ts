@@ -6,6 +6,11 @@ const MODEL_INPUT_SIZE = 224;
 /**
  * Preprocess gambar ke format yang dibutuhkan model
  *
+ * Strategy: Center crop untuk konsistensi hasil
+ * - Resize image ke ukuran dimana sisi terkecil = 224px
+ * - Crop dari tengah untuk mendapatkan 224x224 square
+ * - Ini memastikan hasil konsisten terlepas dari aspect ratio asli
+ *
  * CRITICAL NOTES:
  * - Input model: float32 dengan shape [1, 224, 224, 3]
  * - Model SUDAH include preprocessing layer (MobileNet with preprocessing)
@@ -15,27 +20,60 @@ export async function preprocessImage(imageUri: string): Promise<Float32Array> {
   try {
     console.log('📐 Preprocessing image:', imageUri);
 
-    // Step 1: Resize ke 224x224 dan langsung dapatkan base64
-    console.log('📐 Resizing to 224x224...');
+    // Step 1: Get original image dimensions
+    const originalImage = await ImageManipulator.manipulateAsync(imageUri, [], {
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    
+    const { width: origWidth, height: origHeight } = originalImage;
+    console.log(`📐 Original dimensions: ${origWidth}x${origHeight}`);
+
+    // Step 2: Calculate resize to make smallest side = 224
+    const scale = MODEL_INPUT_SIZE / Math.min(origWidth, origHeight);
+    const scaledWidth = Math.round(origWidth * scale);
+    const scaledHeight = Math.round(origHeight * scale);
+    console.log(`📐 Scaling to: ${scaledWidth}x${scaledHeight}`);
+
+    // Step 3: Resize maintaining aspect ratio
     const resized = await ImageManipulator.manipulateAsync(
       imageUri,
-      [{ resize: { width: MODEL_INPUT_SIZE, height: MODEL_INPUT_SIZE } }],
+      [{ resize: { width: scaledWidth, height: scaledHeight } }],
+      { format: ImageManipulator.SaveFormat.JPEG, compress: 1 }
+    );
+
+    // Step 4: Center crop to 224x224 for consistent results
+    const cropX = Math.floor((scaledWidth - MODEL_INPUT_SIZE) / 2);
+    const cropY = Math.floor((scaledHeight - MODEL_INPUT_SIZE) / 2);
+    console.log(`✂️ Center cropping from (${cropX}, ${cropY})`);
+
+    const cropped = await ImageManipulator.manipulateAsync(
+      resized.uri,
+      [
+        {
+          crop: {
+            originX: Math.max(0, cropX),
+            originY: Math.max(0, cropY),
+            width: MODEL_INPUT_SIZE,
+            height: MODEL_INPUT_SIZE,
+          },
+        },
+      ],
       {
         format: ImageManipulator.SaveFormat.JPEG,
-        compress: 1, // No compression untuk kualitas maksimal
-        base64: true, // Langsung dapatkan base64
+        compress: 1,
+        base64: true,
       }
     );
 
-    if (!resized.base64) {
-      throw new Error('Failed to get base64 from resized image');
+    if (!cropped.base64) {
+      throw new Error('Failed to get base64 from cropped image');
     }
 
-    // Step 2: Decode JPEG to raw RGB pixels
+    // Step 5: Decode JPEG to raw RGB pixels
     console.log('📖 Decoding image data...');
-    const imageData = await decodeJPEGToRGB(resized.base64);
+    const imageData = await decodeJPEGToRGB(cropped.base64);
 
-    // Step 3: Validate output
+    // Step 6: Validate output
     const expectedSize = MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3;
     if (imageData.length !== expectedSize) {
       throw new Error(`Invalid output size: ${imageData.length}, expected ${expectedSize}`);
